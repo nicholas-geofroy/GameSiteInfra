@@ -12,8 +12,8 @@ const fe_bucket = new gcp.storage.Bucket(fe_name, {
   storageClass: "COLDLINE",
   forceDestroy: true,
   website: {
-    mainPageSuffix: `${build_dir}/index.html`,
-    notFoundPage: `${build_dir}/index.html`,
+    mainPageSuffix: `index.html`,
+    notFoundPage: `index.html`,
   },
 });
 
