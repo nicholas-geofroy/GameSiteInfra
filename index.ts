@@ -5,6 +5,7 @@ import * as synced_folder from "@pulumi/synced-folder";
 // TODO: run the build first
 const build_dir = "../GameSiteFE/build";
 const fe_name = "gamesite-fe";
+const domain_name = "geofroy.ca";
 
 // Create a GCP resource (Storage Bucket)
 const fe_bucket = new gcp.storage.Bucket(fe_name, {
@@ -47,14 +48,42 @@ const urlMap = new gcp.compute.URLMap("url-map", {
   defaultService: backendBucket.selfLink,
 });
 
-// Create an HTTP proxy to route requests to the URLMap.
-const httpProxy = new gcp.compute.TargetHttpProxy("http-proxy", {
+const sslCert = new gcp.compute.ManagedSslCertificate(`${fe_name}-cert`, {
+  managed: {
+    domains: [domain_name],
+  },
+});
+
+// Create an HTTPS proxy to route requests to the URLMap.
+const httpsProxy = new gcp.compute.TargetHttpsProxy("https-proxy", {
   urlMap: urlMap.selfLink,
+  sslCertificates: [sslCert.name],
 });
 
 // Create a GlobalForwardingRule rule to route requests to the HTTP proxy.
+const httpsForwardingRule = new gcp.compute.GlobalForwardingRule(
+  `${fe_name}-https-forwarding-rule`,
+  {
+    ipAddress: ip.address,
+    ipProtocol: "TCP",
+    portRange: "443",
+    target: httpsProxy.selfLink,
+  }
+);
+
+//Redirect HTTP to HTTPs
+const httpUrlMap = new gcp.compute.URLMap("http-redirect-url-map", {
+  defaultUrlRedirect: {
+    hostRedirect: ip.address,
+    httpsRedirect: true,
+    stripQuery: false,
+  },
+});
+const httpProxy = new gcp.compute.TargetHttpProxy("http-proxy", {
+  urlMap: httpUrlMap.selfLink,
+});
 const httpForwardingRule = new gcp.compute.GlobalForwardingRule(
-  `${fe_name}-http-forwarding-rule`,
+  `${fe_name}-http-redirect-forwarding-rule`,
   {
     ipAddress: ip.address,
     ipProtocol: "TCP",
