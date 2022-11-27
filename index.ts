@@ -140,6 +140,8 @@ const backend_service = new gcp.compute.BackendService("backend-service", {
   ],
   portName: "http",
   healthChecks: backend_health_check.selfLink,
+  timeoutSec: 3600,
+  connectionDrainingTimeoutSec: 3600,
 });
 
 // ROUTING
